@@ -4,7 +4,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 from typing import Optional, List
 from datetime import datetime
-
+from uuid import uuid4
 from backend.database import init_db, async_db, DASS21ScoreModel, KnowledgeBaseModel
 from backend.agent import process_message
 from backend.memory import memory_manager
@@ -53,6 +53,12 @@ class KnowledgeCreateRequest(BaseModel):
     content: str
     category: str
     source: str
+
+class DASS21UserCreateRequest(BaseModel):
+    depression_score: int
+    anxiety_score: int
+    stress_score: int
+    notes: Optional[str] = None
 
 
 @app.on_event("startup")
@@ -260,6 +266,45 @@ async def create_dass21_score(request: DASS21CreateRequest):
         }
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Error creating DASS21 score: {str(e)}")
+    
+@app.post("/dass21/create-user")
+async def create_dass21_user(request: DASS21UserCreateRequest):
+    try:
+        user_id = str(uuid4())
+        depression_score = request.depression_score
+        anxiety_score = request.anxiety_score
+        stress_score = request.stress_score
+        notes = request.notes
+        total_score = depression_score + anxiety_score + stress_score
+        if total_score <= 20:
+            severity = "normal"
+        elif total_score <= 40:
+            severity = "mild"
+        elif total_score <= 60:
+            severity = "moderate"
+        elif total_score <= 80:
+            severity = "severe"
+        else:
+            severity = "extremely severe"
+        score_data = DASS21ScoreModel(
+            user_id=request.user_id,
+            depression_score=request.depression_score,
+            anxiety_score=request.anxiety_score,
+            stress_score=request.stress_score,
+            total_score=total_score,
+            severity_level=severity,
+            notes=request.notes
+        )
+        collection = async_db.dass21_scores
+        await collection.insert_one(score_data.dict())
+        return {
+            "status": "success",
+            "user_id": user_id,
+            "total_score": total_score,
+            "notes": notes
+        }
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Error: {str(e)}")
 
 
 @app.get("/dass21/{user_id}")

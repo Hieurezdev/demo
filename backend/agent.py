@@ -6,11 +6,17 @@ from langgraph.graph import StateGraph, END
 from langgraph.prebuilt import ToolNode
 from backend.tools import ALL_TOOLS, query_dass21_scores, parallel_knowledge_search
 from backend.memory import memory_manager
+from openai import OpenAI
 import os
 import operator
 from dotenv import load_dotenv
 
 load_dotenv()
+openai_client =  OpenAI(
+    base_url=os.getenv("GPT_OSS_URL"),
+    api_key="EMPTY", 
+)
+
 # Define the agent state
 class AgentState(TypedDict):
     """State of the agent."""
@@ -115,20 +121,17 @@ Kết quả tìm kiếm về câu hỏi của người dùng:
 Hãy trả lời với vai trò là Ami, kết hợp thông tin từ kết quả tìm kiếm nhưng vẫn giữ giọng điệu của một người bạn thân thiết.
 Nếu thông tin liên quan đến tình trạng tâm lý của người dùng dựa trên DASS21, hãy thể hiện sự quan tâm nhẹ nhàng."""
 
-    # Create LLM with system instruction
-    llm_with_system = ChatGoogleGenerativeAI(
-        model="gemini-2.5-flash",
-        google_api_key=os.getenv("GOOGLE_API_KEY"),
-        temperature=0.7,
-        system_instruction=system_context
+    full_messages = system_context + "Lịch sử trò chuyện:\n" + "\n".join([msg.content for msg in conversation_history]) + "\n" + "Message: " + "\n".join([msg.content for msg in list(messages)])
+    response = openai_client.chat.completions.create(
+            model="hiudev/gpt-oss-20b-VietMindAI-4bit", 
+            messages=full_messages,
+            temperature=0.5,
+            extra_body={"reasoning_effort": "medium"},
+            max_tokens=16000            
     )
 
-    # Include conversation history for context
-    full_messages = list(conversation_history) + list(state["messages"][-1:])
-    response = llm_with_system.invoke(full_messages)
-
     return {
-        "messages": [AIMessage(content=response.content)],
+        "messages": [AIMessage(content=response.choices[0].message.content)],
         "user_id": user_id,
         "session_id": state["session_id"],
         "query_type": state["query_type"],
@@ -155,20 +158,19 @@ Hãy trả lời với vai trò là Ami - người bạn thân thiết. Dựa v�
 Nếu người dùng có vẻ buồn hoặc căng thẳng (dựa vào điểm số), hãy thể hiện sự quan tâm tinh tế hơn.
 Nếu người dùng có vẻ ổn, hãy trò chuyện tự nhiên và vui vẻ như bạn bè thông thường."""
 
-    # Create LLM with system instruction
-    llm_with_system = ChatGoogleGenerativeAI(
-        model="gemini-2.5-flash",
-        google_api_key=os.getenv("GOOGLE_API_KEY"),
-        temperature=0.7,
-        system_instruction=system_context
+    # Include conversation history for context
+    full_messages = system_context + "Lịch sử trò chuyện:\n" + "\n".join([msg.content for msg in conversation_history]) + "\n" + "Message: " + "\n".join([msg.content for msg in list(messages)])
+    formatted_messages = [{"role": "user", "content": full_messages}]
+    response = openai_client.chat.completions.create(
+            model="hiudev/gpt-oss-20b-VietMindAI-4bit", 
+            messages=formatted_messages,
+            temperature=0.5,
+            extra_body={"reasoning_effort": "medium"},
+            max_tokens=16000            
     )
 
-    # Include conversation history for context
-    full_messages = list(conversation_history) + list(messages)
-    response = llm_with_system.invoke(full_messages)
-
     return {
-        "messages": [AIMessage(content=response.content)],
+        "messages": [AIMessage(content=response.choices[0].message.content)],
         "user_id": user_id,
         "session_id": state["session_id"],
         "query_type": state["query_type"],

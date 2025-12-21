@@ -21,4 +21,5 @@ dependencies = [
     "motor>=3.6.0",
     "google-api-python-client>=2.149.0",
     "pydantic>=2.0.0",
+    "openai>=2.14.0",
 ]

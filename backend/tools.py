@@ -4,10 +4,16 @@ from typing import Dict, List, Optional
 from datetime import datetime, timedelta
 from googleapiclient.discovery import build
 import os
+from google import genai
 from dotenv import load_dotenv
-
 load_dotenv()
 
+client = genai.Client(api_key=os.getenv("GOOGLE_API_KEY"))
+def get_embedding(text: str) -> list[float]:
+    result = client.models.embed_content(
+        model="gemini-embedding-001",
+        contents= text)
+    return result.embeddings[0].values
 
 @tool
 def query_dass21_scores(user_id: str, days: int = 30) -> Dict:
@@ -66,7 +72,7 @@ def query_dass21_scores(user_id: str, days: int = 30) -> Dict:
 
 
 @tool
-def search_knowledge_base(query: str, category: Optional[str] = None, limit: int = 5) -> List[Dict]:
+def search_knowledge_base(query: str, category: Optional[str] = None, vector_search_index: str = "default", candidates: int = 10, limit: int = 5) -> List[Dict]:
     """
     Search knowledge base in MongoDB for relevant information.
 
@@ -79,36 +85,43 @@ def search_knowledge_base(query: str, category: Optional[str] = None, limit: int
         List of relevant documents from knowledge base
     """
     from backend.database import sync_db
-
     collection = sync_db.knowledge_base
 
     try:
-        # Build query
-        search_query = {"$text": {"$search": query}}
+        query_vector = get_embedding(query)
+        
+        search_params = {
+            "index": vector_search_index,
+            "path": "embedding",
+            "queryVector": query_vector,
+            "limit": limit,
+            "numCandidates": candidates
+        }
+
         if category:
-            search_query["category"] = category
+            search_params["filter"] = {"category": {"$eq": category}}
 
-        # Execute search with text score
-        results = list(collection.find(
-            search_query,
-            {"score": {"$meta": "textScore"}}
-        ).sort([("score", {"$meta": "textScore"})]).limit(limit))
-
-        # Convert ObjectId to string
-        for result in results:
+        vector_pipeline = [{"$vectorSearch": search_params}]
+        vector_results = list(collection.aggregate(vector_pipeline))
+        
+        for result in vector_results:
             result['_id'] = str(result['_id'])
-            if 'created_at' in result:
-                result['created_at'] = result['created_at'].isoformat()
-            if 'updated_at' in result:
-                result['updated_at'] = result['updated_at'].isoformat()
+            for date_field in ['created_at', 'updated_at']:
+                if date_field in result and result[date_field]:
+                    result[date_field] = result[date_field].isoformat()
+                    
+        return vector_results
 
-        return results
+    except Exception as e:
+        print(f"Error searching knowledge base: {e}")
+        return []
+
+        return vector_results
     except Exception as e:
         # If text index doesn't exist or knowledge base is empty, return empty results
         print(f"Warning: Knowledge base search failed: {e}")
         return []
-
-
+    
 @tool
 def google_search(query: str, num_results: int = 5) -> List[Dict]:
     """
