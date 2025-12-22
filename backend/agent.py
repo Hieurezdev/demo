@@ -59,16 +59,25 @@ Tin nhắn của người dùng: {last_message}
 
 Chỉ trả lời ĐÚNG MỘT từ: knowledge_search hoặc general"""
 
-    routing_llm = ChatGoogleGenerativeAI(
-        model="gemini-2.5-flash",
-        google_api_key=os.getenv("GOOGLE_API_KEY"),
-        temperature=0
+    # routing_llm = ChatGoogleGenerativeAI(
+    #     model="gemini-2.5-flash",
+    #     google_api_key=os.getenv("GOOGLE_API_KEY"),
+    #     temperature=0
+    # )
+
+    # # Use HumanMessage instead of SystemMessage for Gemini compatibility
+    # response = routing_llm.invoke([HumanMessage(content=routing_prompt)])
+    # route = response.content.strip().lower()
+    formatted_messages = [{"role": "user", "content": routing_prompt}]
+    response = openai_client.chat.completions.create(
+            model="hiudev/gpt-oss-20b-VietMindAI-4bit", 
+            messages=formatted_messages,
+            temperature=0.5,
+            extra_body={"reasoning_effort": "medium"},
+            max_tokens=16000            
     )
-
-    # Use HumanMessage instead of SystemMessage for Gemini compatibility
-    response = routing_llm.invoke([HumanMessage(content=routing_prompt)])
-    route = response.content.strip().lower()
-
+    route = response.choices[0].message.content.strip().lower()
+            
     # Ensure route is valid
     if route not in ["knowledge_search", "general"]:
         route = "general"  # Default to general if unclear
@@ -122,13 +131,15 @@ Hãy trả lời với vai trò là Ami, kết hợp thông tin từ kết quả
 Nếu thông tin liên quan đến tình trạng tâm lý của người dùng dựa trên DASS21, hãy thể hiện sự quan tâm nhẹ nhàng."""
 
     full_messages = system_context + "Lịch sử trò chuyện:\n" + "\n".join([msg.content for msg in conversation_history]) + "\n" + "Message: " + "\n".join([msg.content for msg in list(messages)])
+    formatted_messages = [{"role": "user", "content": full_messages}]
     response = openai_client.chat.completions.create(
             model="hiudev/gpt-oss-20b-VietMindAI-4bit", 
-            messages=full_messages,
+            messages=formatted_messages,
             temperature=0.5,
             extra_body={"reasoning_effort": "medium"},
             max_tokens=16000            
     )
+
 
     return {
         "messages": [AIMessage(content=response.choices[0].message.content)],
