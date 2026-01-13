@@ -70,9 +70,9 @@ Chỉ trả lời ĐÚNG MỘT từ: knowledge_search hoặc general"""
     # route = response.content.strip().lower()
     formatted_messages = [{"role": "user", "content": routing_prompt}]
     response = openai_client.chat.completions.create(
-            model="hiudev/gpt-oss-20b-VietMindAI-4bit", 
+            model="hoangchihien3011/VietMind", 
             messages=formatted_messages,
-            temperature=0.5,
+            temperature=0.3,
             extra_body={"reasoning_effort": "medium"},
             max_tokens=16000            
     )
@@ -133,9 +133,9 @@ Nếu thông tin liên quan đến tình trạng tâm lý của người dùng d
     full_messages = system_context + "Lịch sử trò chuyện:\n" + "\n".join([msg.content for msg in conversation_history]) + "\n" + "Message: " + "\n".join([msg.content for msg in list(messages)])
     formatted_messages = [{"role": "user", "content": full_messages}]
     response = openai_client.chat.completions.create(
-            model="hiudev/gpt-oss-20b-VietMindAI-4bit", 
+            model="hoangchihien3011/VietMind", 
             messages=formatted_messages,
-            temperature=0.5,
+            temperature=0.3,
             extra_body={"reasoning_effort": "medium"},
             max_tokens=16000            
     )
@@ -173,9 +173,9 @@ Nếu người dùng có vẻ ổn, hãy trò chuyện tự nhiên và vui vẻ 
     full_messages = system_context + "Lịch sử trò chuyện:\n" + "\n".join([msg.content for msg in conversation_history]) + "\n" + "Message: " + "\n".join([msg.content for msg in list(messages)])
     formatted_messages = [{"role": "user", "content": full_messages}]
     response = openai_client.chat.completions.create(
-            model="hiudev/gpt-oss-20b-VietMindAI-4bit", 
+            model="hoangchihien3011/VietMind", 
             messages=formatted_messages,
-            temperature=0.5,
+            temperature=0.3,
             extra_body={"reasoning_effort": "medium"},
             max_tokens=16000            
     )
