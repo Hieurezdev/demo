@@ -130,14 +130,25 @@ Kết quả tìm kiếm về câu hỏi của người dùng:
 Hãy trả lời với vai trò là Ami, kết hợp thông tin từ kết quả tìm kiếm nhưng vẫn giữ giọng điệu của một người bạn thân thiết.
 Nếu thông tin liên quan đến tình trạng tâm lý của người dùng dựa trên DASS21, hãy thể hiện sự quan tâm nhẹ nhàng."""
 
-    full_messages = system_context + "Lịch sử trò chuyện:\n" + "\n".join([msg.content for msg in conversation_history]) + "\n" + "Message: " + "\n".join([msg.content for msg in list(messages)])
-    formatted_messages = [{"role": "user", "content": full_messages}]
+    # Format messages properly with separate roles to avoid token overflow
+    formatted_messages = [{"role": "system", "content": system_context[:3000]}]  # Limit system context
+    
+    # Only include last 3 messages from history
+    recent_history = conversation_history[-3:] if len(conversation_history) > 3 else conversation_history
+    for msg in recent_history:
+        role = "assistant" if isinstance(msg, AIMessage) else "user"
+        content = msg.content[:500] if len(msg.content) > 500 else msg.content
+        formatted_messages.append({"role": role, "content": content})
+    
+    # Add current user message
+    current_message = messages[-1].content if messages else ""
+    formatted_messages.append({"role": "user", "content": current_message})
+    
     response = openai_client.chat.completions.create(
             model="hoangchihien3011/VietMind", 
             messages=formatted_messages,
             temperature=0.3,
-            extra_body={"reasoning_effort": "medium"},
-            max_tokens=16000            
+            max_tokens=8000  # Safe limit for output
     )
 
 
@@ -169,15 +180,25 @@ Hãy trả lời với vai trò là Ami - người bạn thân thiết. Dựa v�
 Nếu người dùng có vẻ buồn hoặc căng thẳng (dựa vào điểm số), hãy thể hiện sự quan tâm tinh tế hơn.
 Nếu người dùng có vẻ ổn, hãy trò chuyện tự nhiên và vui vẻ như bạn bè thông thường."""
 
-    # Include conversation history for context
-    full_messages = system_context + "Lịch sử trò chuyện:\n" + "\n".join([msg.content for msg in conversation_history]) + "\n" + "Message: " + "\n".join([msg.content for msg in list(messages)])
-    formatted_messages = [{"role": "user", "content": full_messages}]
+    # Format messages properly with separate roles to avoid token overflow
+    formatted_messages = [{"role": "system", "content": system_context}]
+    
+    # Only include last 3 messages from history
+    recent_history = conversation_history[-3:] if len(conversation_history) > 3 else conversation_history
+    for msg in recent_history:
+        role = "assistant" if isinstance(msg, AIMessage) else "user"
+        content = msg.content[:500] if len(msg.content) > 500 else msg.content
+        formatted_messages.append({"role": role, "content": content})
+    
+    # Add current user message
+    current_message = messages[-1].content if messages else ""
+    formatted_messages.append({"role": "user", "content": current_message})
+    
     response = openai_client.chat.completions.create(
             model="hoangchihien3011/VietMind", 
             messages=formatted_messages,
             temperature=0.3,
-            extra_body={"reasoning_effort": "medium"},
-            max_tokens=16000            
+            max_tokens=8000  # Safe limit for output
     )
 
     return {
