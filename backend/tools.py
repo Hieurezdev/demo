@@ -72,7 +72,7 @@ def query_dass21_scores(user_id: str, days: int = 30) -> Dict:
 
 
 @tool
-def search_knowledge_base(query: str, category: Optional[str] = None, vector_search_index: str = "default", candidates: int = 10, limit: int = 5) -> List[Dict]:
+def search_knowledge_base(query: str, category: Optional[str] = None, vector_search_index: str = "default", candidates: int = 10, limit: int = 8) -> List[Dict]:
     """
     Search knowledge base in MongoDB for relevant information.
 
